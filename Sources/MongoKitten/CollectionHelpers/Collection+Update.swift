@@ -29,6 +29,24 @@ extension MongoCollection {
         )
     }
     
+    public func updateOne(
+        where query: Document,
+        setting: Document?,
+        unsetting: Document?
+    ) -> EventLoopFuture<UpdateReply> {
+        return pool.next(for: .basic).flatMap { connection in
+            let request = UpdateCommand.UpdateRequest(where: query, setting: setting, unsetting: unsetting)
+            let command = UpdateCommand(updates: [request], inCollection: self.name)
+            
+            return connection.executeCodable(
+                command,
+                namespace: self.database.commandNamespace,
+                in: self.transaction,
+                sessionId: self.sessionId ?? connection.implicitSessionId
+            )
+        }.decode(UpdateReply.self)._mongoHop(to: hoppedEventLoop)
+    }
+    
     public func updateMany(
         where query: Document,
         to document: Document
